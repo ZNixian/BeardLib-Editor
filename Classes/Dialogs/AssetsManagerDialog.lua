@@ -165,11 +165,11 @@ function AssetsManagerDialog:show_assets()
             background_color = color and color:with_alpha(0.4),
         })
 	end
-	
+
     for unit, times in pairs(managers.worlddefinition._all_names) do
         new_asset(unit, UNIT, times)
 	end
-	
+
 	for type, assets in pairs(self._assets) do
 		for name, _ in pairs(assets) do
 			if type ~= UNIT or not managers.worlddefinition._all_names[name] then
@@ -609,7 +609,7 @@ function AssetsManagerDialog:_make_package_report(package)
 
             pos = pos + Vector3(bsr, 0, 0)
 
-            
+
             if math.mod(i, prow) == 0 then
                 c_rad = bsr * 2
 
@@ -869,7 +869,7 @@ function AssetsManagerDialog:all_ok_dialog()
             end}})
         else
             BLE.Dialog:Show(opt)
-        end        
+        end
     end
 end
 
