@@ -87,7 +87,7 @@ function AssetsManagerDialog:_Show()
     self._unit_info:divider("UnitInfo", {text = "None Selected.", color = false})
     local actions = self._unit_info:divgroup("Actions")
     actions:button("FindPackage", ClassClbk(self, "find_package", false, false, false), {offset = 0, enabled = false})
-    actions:button("LoadFromExtract", ClassClbk(self, "load_from_extract_dialog", false, false), {offset = 0, enabled = false, visible = FileIO:Exists(BLE.ExtractDirectory)})
+    actions:button("LoadFromExtract", ClassClbk(self, "load_from_extract_dialog", false, false), {offset = 0, enabled = false, visible = FileIO:Exists(BLE.ExtractDirectory) or (blt.asset_db and true)})
 
     actions:button("RemoveAndUnloadAsset", ClassClbk(self, "remove_unit_from_map", true, false), {offset = 0, enabled = false})
     actions:button("Remove", ClassClbk(self, "remove_unit_from_map", false, false), {offset = 0, enabled = false})
@@ -381,7 +381,7 @@ function AssetsManagerDialog:_load_from_extract(config, dontask, failed_all, clb
         end)
         local function save()
             local assets_dir = Path:CombineDir(mod.ModPath, add.directory or "")
-            local copy_data = {}
+            local copy_data, copy_data_db = {}, {}
             for _, unit_load in pairs(to_copy) do
                 if type(unit_load) == "table" then
                     for _, asset in pairs(unit_load) do
@@ -391,7 +391,19 @@ function AssetsManagerDialog:_load_from_extract(config, dontask, failed_all, clb
 
                             local path = name.."."..type
                             local to_path = Path:Combine(assets_dir, path)
-                            table.insert(copy_data, {asset.extract_real_path, to_path})
+
+                            -- If we have a version of SBLT that supports extracting directly from the game bundles, use that
+                            -- in preference to an extract. That means we get the latest files even if the user hasn't updated
+                            -- their extract. The downside is that the game will freeze until the copying is done, is that a
+                            -- reasonable tradeoff?
+                            -- If you invert this, be sure to also change Utils:ParseXml to match - you wouldn't want to look
+                            -- for the dependencies based on the latest assets then copy over the extracted ones.
+                            if blt.asset_db then
+                                table.insert(copy_data_db, {name, type, to_path, asset.extract_real_path})
+                            else
+                                table.insert(copy_data, {asset.extract_real_path, to_path})
+                            end
+
                             asset.extract_real_path = nil
                             local dir = Path:GetDirectory(to_path)
                             if not FileIO:Exists(dir) then
@@ -404,8 +416,8 @@ function AssetsManagerDialog:_load_from_extract(config, dontask, failed_all, clb
                 end
             end
             project:save_xml(add_path, add)
-            if #copy_data > 0 then
-                FileIO:CopyFilesToAsync(copy_data, function(success)
+            if #copy_data > 0 or #copy_data_db > 0 then
+                local function on_copy_complete(success)
                     if success then
                         CustomPackageManager:LoadPackageConfig(assets_dir, to_copy, true)
                         if failed_all then
@@ -428,7 +440,28 @@ function AssetsManagerDialog:_load_from_extract(config, dontask, failed_all, clb
                             clbk()
                         end
                     end
-                end)
+                end
+
+                -- First, extract what assets we can (and are supposed to) with SBLT's asset loader
+                for _, f in ipairs(copy_data_db) do
+                    local file_data = blt.asset_db.read_file(f[1], f[2], {
+                        optional = true,
+                    })
+                    if file_data then
+                        FileIO:WriteTo(f[3], file_data, "wb")
+                    else
+                        -- Couldn't load it from SBLT's loader? Fall back to the export.
+                        table.insert(copy_data, {f[4], f[3]})
+                        BLE:Log("Failed to read asset %s.%s from SBLT's bundle reader, copying from extract instead", f[1], f[2])
+                    end
+                end
+
+                -- If we still have files left to copy, do that - otherwise we're done
+                if #copy_data > 0 then
+                    FileIO:CopyFilesToAsync(copy_data, on_copy_complete)
+                else
+                    on_copy_complete(true)
+                end
 			elseif failed_all then
                 BLE.Utils:Notify("Info", "No assets to copy, failed to export an asset or more.")
             else

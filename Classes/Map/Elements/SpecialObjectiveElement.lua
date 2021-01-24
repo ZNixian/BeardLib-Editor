@@ -204,7 +204,7 @@ function EditorSpecialObjective:test_element()
             {"Load it through a package", function()
                 world._assets_manager:find_package(spawn_unit_name, "unit", true)
             end},
-            FileIO:Exists(BLE.ExtractDirectory) and {"Load it through extract", function()
+            (FileIO:Exists(BLE.ExtractDirectory) or blt.asset_db) and {"Load it through extract", function()
                 world:LoadFromExtract("unit", spawn_unit_name)
             end} or nil
         })

@@ -80,11 +80,22 @@ function Utils:GetDependencies(ext, path, ignore_default, exclude)
     local temp = deep_clone(config)
     config = {}
 
+    -- Check if a file is either in the extract or available from SBLT's asset loader
+    local function file_available(file_path, f_path, f_ext)
+        -- If the SBLT asset thing is available, make sure it has the file
+        -- For files with different language types, this may not be the case
+        if blt.asset_db and blt.asset_db.has_file(f_path, f_ext) then
+            return true
+        end
+
+        return FileIO:Exists(file_path)
+    end
+
     local function add_to_config(file, file_path)
         if self.pack_extract_path then
             file.extract_real_path = file_path
         end
-        if not self.check_path_before_insert or FileIO:Exists(file_path) then
+        if not self.check_path_before_insert or file_available(file_path, file.path, file._meta) then
             table.insert(config, file)
         end
     end
@@ -106,7 +117,7 @@ function Utils:GetDependencies(ext, path, ignore_default, exclude)
                     end
                 end
                 if not success then
-                    if FileIO:Exists(file_path) then
+                    if file_available(file_path, file.path, ext) then
                         add_to_config(file, file_path)
                     else
                         local key = BLEP.swap_endianness(file_id:key())

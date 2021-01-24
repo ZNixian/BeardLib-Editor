@@ -32,7 +32,7 @@ function WData:enable()
     if BeardLib.current_level then
         self:bind_opt("LoadUnit", ClassClbk(self, "OpenLoadDialog", {ext = "unit"}))
     end
-    if FileIO:Exists(BLE.ExtractDirectory) then
+    if FileIO:Exists(BLE.ExtractDirectory) or blt.asset_db then
         self:bind_opt("LoadUnitFromExtract", ClassClbk(self, "OpenLoadDialog", {on_click = ClassClbk(self, "LoadFromExtract", "unit"), ext = "unit"}))
     end
 end
@@ -130,7 +130,7 @@ function WData:build_default()
         s = s .. "\nIf you wish to clone it please use the 'Clone Existing Heist' feature in projects menu."
         self:alert(s)
     end
-    local has_extract = FileIO:Exists(BLE.ExtractDirectory)
+    local has_extract = FileIO:Exists(BLE.ExtractDirectory) or (blt.asset_db and true)
     if not has_extract then
         self:alert("You don't have an extract directory\nSome features will not work!")
     end

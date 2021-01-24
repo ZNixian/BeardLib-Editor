@@ -81,6 +81,20 @@ function Utils:SetPosition(unit, position, rotation, ud, offset)
 end
 
 function Utils:ParseXml(typ, path, scriptdata, assets_dir)
+	-- First try reading from the game's bundles directly, if we're using a version of SBLT that supports it
+	if blt.asset_db then
+		local raw = blt.asset_db.read_file(path, typ, {
+			optional = true
+		})
+		if raw ~= nil then
+			if scriptdata then
+				return FileIO:ConvertScriptData(raw, "binary")
+			else
+				return Node.from_xml(raw)
+			end
+		end
+	end
+
 	local file = Path:Combine(assets_dir or BLE.ExtractDirectory, path.."."..typ)
 	local load = function(path)
 		if scriptdata then
