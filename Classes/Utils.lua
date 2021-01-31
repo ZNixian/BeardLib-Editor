@@ -489,12 +489,26 @@ end
 function Utils:GetEntries(params)
     local entries = {}
     local IsLoaded
+    local ids_type = params.type:id()
 
-    if params.packages then
+    if ids_type == Idstring("environment") then
+        -- Environments don't get any special treatment by BeardLib, but since they're really
+        -- just scriptdata files if we add them then PackageManager:has will return true but
+        -- the game will crash when we try reading them, since it won't add them to the
+        -- dynamic resource package.
+        -- If this file isn't from the base game though, then BeardLib will successfully intercept
+        -- the loading call and read and parse it.
+        IsLoaded = function(entry)
+            if DB:_has(ids_type, entry:id()) then
+                return PackageManager:_has(ids_type, entry:id())
+            else
+                return PackageManager:has(ids_type, entry:id())
+            end
+        end
+    elseif params.packages then
         local type, packages = params.type, params.packages
         IsLoaded = function(entry) return self:IsLoaded(entry, type, packages) end
     else
-        local ids_type = params.type:id()
         IsLoaded = function(entry) return PackageManager:has(ids_type, entry:id()) end
     end
 
