@@ -444,8 +444,12 @@ function AssetsManagerDialog:_load_from_extract(config, dontask, failed_all, clb
 
                 -- First, extract what assets we can (and are supposed to) with SBLT's asset loader
                 for _, f in ipairs(copy_data_db) do
+                    -- Check if this file exists with language variants, in which case we need to set that while reading
+                    local is_localised = blt.asset_db.has_file(f[1], f[2], {language = "english"})
+
                     local file_data = blt.asset_db.read_file(f[1], f[2], {
                         optional = true,
+                        language = is_localised and "english"
                     })
                     if file_data then
                         FileIO:WriteTo(f[3], file_data, "wb")

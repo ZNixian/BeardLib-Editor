@@ -83,8 +83,8 @@ function Utils:GetDependencies(ext, path, ignore_default, exclude)
     -- Check if a file is either in the extract or available from SBLT's asset loader
     local function file_available(file_path, f_path, f_ext)
         -- If the SBLT asset thing is available, make sure it has the file
-        -- For files with different language types, this may not be the case
-        if blt.asset_db and blt.asset_db.has_file(f_path, f_ext) then
+        -- To make localised assets work, check for both the nonlocalised and english versions of the file.
+        if blt.asset_db and (blt.asset_db.has_file(f_path, f_ext) or blt.asset_db.has_file(f_path, f_ext, {language="english"})) then
             return true
         end
 
